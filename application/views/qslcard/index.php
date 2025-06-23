@@ -11,8 +11,15 @@
         </div>
     <?php } ?>
 
-    <?php
+    <!-- View toggle buttons -->
+    <div class="mb-3">
+        <div class="btn-group" role="group">
+            <button type="button" class="btn btn-primary" id="listViewBtn"><?= __("List View"); ?></button>
+            <button type="button" class="btn btn-outline-primary" id="galleryViewBtn"><?= __("Gallery View"); ?></button>
+        </div>
+    </div>
 
+    <?php
     if ($this->session->userdata('user_date_format')) {
         // If Logged in and session exists
         $custom_date_format = $this->session->userdata('user_date_format');
@@ -20,7 +27,11 @@
         // Get Default date format from /config/wavelog.php
         $custom_date_format = $this->config->item('qso_date_format');
     }
+    ?>
 
+    <!-- List View -->
+    <div id="listView">
+    <?php
     if (is_array($qslarray->result())) {
         echo '<table style="width:100%" class="qsltable table table-sm table-bordered table-hover table-striped table-condensed">
         <thead>
@@ -71,5 +82,113 @@
         echo '</tbody></table>';
     }
     ?>
+    </div>
+
+    <!-- Gallery View -->
+    <div id="galleryView" class="qsl-gallery" style="display: none;">
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+            <?php if (is_array($qslarray->result())): ?>
+                <?php foreach ($qslarray->result() as $qsl): ?>
+                    <?php
+                        $timestamp = strtotime($qsl->COL_TIME_ON);
+                        $qslDate = strtotime($qsl->COL_QSLRDATE ?? '');
+                        $band = ($qsl->COL_SAT_NAME != null) ? $qsl->COL_SAT_NAME : strtolower($qsl->COL_BAND);
+                        $mode = $qsl->COL_SUBMODE == null ? $qsl->COL_MODE : $qsl->COL_SUBMODE;
+
+                        // Extract the user ID and filename for constructing the correct path
+                        $parts = explode('/', $qsl->filename);
+                        $filename = end($parts);
+                        $userdata_dir = $this->config->item('userdata');
+                        $user_id = $this->session->userdata('user_id');
+
+                        // Build correct image path: userdata/[user_id]/qsl_card/[filename]
+                        $image_path = base_url() . $userdata_dir . '/' . $user_id . '/qsl_card/' . $filename;
+                    ?>
+                    <div class="col">
+                        <div class="card h-100">
+                            <div class="card-img-container">
+                                <img src="<?= $image_path ?>" class="card-img-top qsl-card-img" alt="QSL Card from <?= str_replace("0", "&Oslash;", $qsl->COL_CALL) ?>">
+                            </div>
+                            <div class="card-body">
+                                <h5 class="card-title"><?= str_replace("0", "&Oslash;", $qsl->COL_CALL) ?></h5>
+                                <p class="card-text">
+                                    <?= $mode ?> | <?= $band ?><br>
+                                    <?= date($custom_date_format, $timestamp) ?> <?= date('H:i', $timestamp) ?><br>
+                                    <?= __("QSL Date") ?>: <?= date($custom_date_format, $qslDate) ?>
+                                </p>
+                            </div>
+                            <div class="card-footer text-center">
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button onclick="deleteQsl('<?= $qsl->id ?>')" class="btn btn-danger"><?= __("Delete") ?></button>
+                                    <button onclick="addQsosToQsl('<?= $qsl->filename ?>')" class="btn btn-success"><?= __("Add Qsos") ?></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+    </div>
 
 </div>
+
+<style>
+    .qsl-gallery .card-img-container {
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #f8f9fa;
+    }
+
+    .qsl-gallery .qsl-card-img {
+        object-fit: contain;
+        max-height: 100%;
+        max-width: 100%;
+        cursor: pointer;
+    }
+
+    .qsl-gallery .card:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    .qsl-gallery .card {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .qsl-gallery .card-body {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end; /* Align all content to bottom */
+        margin-top: auto; /* Push card body content to bottom */
+    }
+
+    /* Remove the margin-bottom auto from card-title */
+    .qsl-gallery .card-title {
+        margin-bottom: 0.5rem; /* Standard margin between title and text */
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('listViewBtn').onclick = function() {
+            document.getElementById('listView').style.display = 'block';
+            document.getElementById('galleryView').style.display = 'none';
+            this.classList.remove('btn-outline-primary');
+            this.classList.add('btn-primary');
+            document.getElementById('galleryViewBtn').classList.remove('btn-primary');
+            document.getElementById('galleryViewBtn').classList.add('btn-outline-primary');
+        };
+
+        document.getElementById('galleryViewBtn').onclick = function() {
+            document.getElementById('listView').style.display = 'none';
+            document.getElementById('galleryView').style.display = 'block';
+            this.classList.remove('btn-outline-primary');
+            this.classList.add('btn-primary');
+            document.getElementById('listViewBtn').classList.remove('btn-primary');
+            document.getElementById('listViewBtn').classList.add('btn-outline-primary');
+        };
+    });
+</script>
